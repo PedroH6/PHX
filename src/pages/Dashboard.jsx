@@ -365,7 +365,7 @@ export default function Dashboard() {
       <PageHeading
         eyebrow="Outcome Growth OS"
         title="Dashboard"
-        description="Acompanhe resultados, oportunidades e ações sugeridas pela IA."
+        description="Acompanhe resultados, oportunidades e ações importantes do seu negócio."
         action={
           <button
             onClick={() => navigate('/objetivos')}
