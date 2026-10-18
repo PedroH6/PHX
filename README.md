@@ -18,7 +18,6 @@ Front-end responsivo do PHX, uma plataforma de campanhas, CRM, agenda e automaç
 - `/inbox` — conversas
 - `/clientes` — CRM
 - `/agenda` — agenda e disponibilidade
-- `/ia` — área reservada para recursos futuros
 - `/configuracoes` — workspace e integrações
 
 ## Rodar localmente
