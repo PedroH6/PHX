@@ -1,0 +1,3 @@
+import { CalendarDays } from 'lucide-react'
+import { PageHeading } from '../components/UI'
+export default function Schedule(){return <div><PageHeading eyebrow="Scheduling Engine" title="Agenda" description="Acompanhe disponibilidade e horários que podem virar campanhas."/><div className="glass-card p-6"><div className="flex items-center gap-3"><div className="icon-bubble"><CalendarDays/></div><div><div className="font-black">Agenda semanal</div><div className="text-sm text-slate-500">14 horários vazios identificados para amanhã.</div></div></div></div></div>}
