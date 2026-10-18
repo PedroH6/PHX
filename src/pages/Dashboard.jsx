@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react'
 import { PageHeading, StatusPill } from '../components/UI'
+import { campaigns } from '../data/appData'
 
 const DEFAULT_WEEKLY_GOAL = 50
 const DEFAULT_APPOINTMENTS = 36
@@ -325,6 +326,292 @@ function WeeklyGoalCard({ appointments, goal, setGoal }) {
   )
 }
 
+
+function getDefaultCampaignPerformance() {
+  return campaigns.reduce((result, campaign) => {
+    result[campaign.id] = {
+      messages: campaign.metrics?.messages ?? 0,
+      responses: campaign.metrics?.responses ?? 0,
+      interested: campaign.metrics?.interested ?? 0,
+      appointments: campaign.metrics?.appointments ?? 0,
+    }
+    return result
+  }, {})
+}
+
+function loadCampaignPerformance() {
+  const defaults = getDefaultCampaignPerformance()
+
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem('phx-campaign-performance') || '{}',
+    )
+
+    return campaigns.reduce((result, campaign) => {
+      result[campaign.id] = {
+        ...defaults[campaign.id],
+        ...(saved[campaign.id] || {}),
+      }
+      return result
+    }, {})
+  } catch {
+    return defaults
+  }
+}
+
+function normalizeCampaignMetrics(metrics) {
+  const messages = clampNumber(metrics.messages, 0, 999999, 0)
+  const responses = clampNumber(metrics.responses, 0, messages, 0)
+  const interested = clampNumber(metrics.interested, 0, responses, 0)
+  const appointments = clampNumber(metrics.appointments, 0, interested, 0)
+
+  return { messages, responses, interested, appointments }
+}
+
+function CampaignResultCard({
+  selectedCampaignId,
+  setSelectedCampaignId,
+  performance,
+  setPerformance,
+  onOpenCampaigns,
+}) {
+  const selectedCampaign =
+    campaigns.find((campaign) => campaign.id === selectedCampaignId) ||
+    campaigns[0]
+
+  const metrics =
+    performance[selectedCampaign?.id] ||
+    selectedCampaign?.metrics || {
+      messages: 0,
+      responses: 0,
+      interested: 0,
+      appointments: 0,
+    }
+
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(metrics)
+
+  useEffect(() => {
+    setDraft(metrics)
+    setEditing(false)
+  }, [selectedCampaignId])
+
+  useEffect(() => {
+    if (!editing) setDraft(metrics)
+  }, [editing, metrics])
+
+  const responseRate =
+    metrics.messages > 0
+      ? Math.round((metrics.responses / metrics.messages) * 100)
+      : 0
+
+  const conversionRate =
+    metrics.messages > 0
+      ? Math.round((metrics.appointments / metrics.messages) * 100)
+      : 0
+
+  const interestRate =
+    metrics.responses > 0
+      ? Math.round((metrics.interested / metrics.responses) * 100)
+      : 0
+
+  const updateDraft = (field, value) => {
+    setDraft((current) => ({ ...current, [field]: value }))
+  }
+
+  const saveMetrics = () => {
+    const normalized = normalizeCampaignMetrics(draft)
+
+    setPerformance((current) => ({
+      ...current,
+      [selectedCampaign.id]: normalized,
+    }))
+    setDraft(normalized)
+    setEditing(false)
+  }
+
+  const cancelEditing = () => {
+    setDraft(metrics)
+    setEditing(false)
+  }
+
+  if (!selectedCampaign) return null
+
+  return (
+    <div className="glass-card p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <Megaphone className="text-violet-600" size={19} />
+            <h2 className="text-lg font-black">Resultado da campanha</h2>
+          </div>
+          <p className="mt-1 text-sm text-slate-500">
+            Acompanhe o desempenho de cada campanha.
+          </p>
+        </div>
+
+        {!editing ? (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="grid h-9 w-9 place-items-center rounded-xl border border-violet-100 bg-white text-violet-600 transition hover:bg-violet-50"
+            aria-label="Editar resultados da campanha"
+            title="Editar resultados"
+          >
+            <Pencil size={15} />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={cancelEditing}
+            className="grid h-9 w-9 place-items-center rounded-xl border border-violet-100 bg-white text-slate-400 transition hover:bg-slate-50"
+            aria-label="Cancelar edição"
+          >
+            <X size={15} />
+          </button>
+        )}
+      </div>
+
+      <div className="mt-5">
+        <label className="text-xs font-bold text-slate-500">
+          Campanha selecionada
+        </label>
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <select
+            value={selectedCampaign.id}
+            onChange={(event) => setSelectedCampaignId(event.target.value)}
+            className="min-w-0 flex-1 rounded-2xl border border-violet-100 bg-white px-3 py-3 text-sm font-bold text-slate-700 outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-200"
+          >
+            {campaigns.map((campaign) => (
+              <option key={campaign.id} value={campaign.id}>
+                {campaign.name}
+              </option>
+            ))}
+          </select>
+
+          <StatusPill tone={selectedCampaign.tone}>
+            {selectedCampaign.status}
+          </StatusPill>
+        </div>
+      </div>
+
+      {!editing ? (
+        <>
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            {[
+              [metrics.messages, 'mensagens'],
+              [metrics.responses, 'respostas'],
+              [metrics.interested, 'interessados'],
+              [metrics.appointments, 'agendamentos'],
+            ].map(([value, label]) => (
+              <div
+                key={label}
+                className="rounded-2xl bg-violet-50 p-4 text-center"
+              >
+                <div className="text-2xl font-black text-violet-700">
+                  {value}
+                </div>
+                <div className="text-xs text-slate-500">{label}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-violet-100 p-3">
+              <div className="text-xs text-slate-400">Taxa de resposta</div>
+              <div className="mt-1 text-xl font-black text-slate-800">
+                {responseRate}%
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-violet-100 p-3">
+              <div className="text-xs text-slate-400">Taxa de interesse</div>
+              <div className="mt-1 text-xl font-black text-slate-800">
+                {interestRate}%
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-violet-100 p-3">
+              <div className="text-xs text-slate-400">Conversão final</div>
+              <div className="mt-1 text-xl font-black text-violet-700">
+                {conversionRate}%
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <div className="mb-2 flex items-center justify-between text-xs">
+              <span className="font-bold text-slate-500">
+                Mensagens → agendamentos
+              </span>
+              <span className="font-black text-violet-600">
+                {conversionRate}%
+              </span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-violet-100">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-violet-700 via-fuchsia-500 to-purple-400 transition-all duration-500"
+                style={{ width: `${Math.min(100, conversionRate)}%` }}
+              />
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="mt-5 rounded-[22px] border border-violet-100 bg-violet-50/60 p-4">
+          <div className="text-sm font-black text-slate-800">
+            Atualizar resultados
+          </div>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            Os números seguem o funil: mensagens, respostas, interessados e
+            agendamentos.
+          </p>
+
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            {[
+              ['messages', 'Mensagens'],
+              ['responses', 'Respostas'],
+              ['interested', 'Interessados'],
+              ['appointments', 'Agendamentos'],
+            ].map(([field, label]) => (
+              <label key={field} className="block">
+                <span className="mb-1.5 block text-xs font-bold text-slate-500">
+                  {label}
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  value={draft[field]}
+                  onChange={(event) =>
+                    updateDraft(field, event.target.value)
+                  }
+                  className="w-full rounded-xl border border-violet-100 bg-white px-3 py-2.5 text-center font-black text-slate-800 outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-200"
+                />
+              </label>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={saveMetrics}
+            className="gradient-button mt-4 w-full"
+          >
+            <Check size={17} />
+            Salvar resultados
+          </button>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={onOpenCampaigns}
+        className="mt-5 w-full rounded-2xl border border-violet-100 px-4 py-3 text-sm font-bold text-violet-700 transition hover:bg-violet-50"
+      >
+        Ver todas as campanhas
+      </button>
+    </div>
+  )
+}
+
 function OpportunityCard({ opportunity, onOpen }) {
   const Icon = opportunity.icon
 
@@ -376,6 +663,27 @@ export default function Dashboard() {
     DEFAULT_REVENUE,
     { min: 0, max: 99999999 },
   )
+
+  const [selectedCampaignId, setSelectedCampaignId] = useState(
+    () =>
+      localStorage.getItem('phx-dashboard-campaign') ||
+      campaigns[0]?.id ||
+      '',
+  )
+  const [campaignPerformance, setCampaignPerformance] = useState(
+    loadCampaignPerformance,
+  )
+
+  useEffect(() => {
+    localStorage.setItem('phx-dashboard-campaign', selectedCampaignId)
+  }, [selectedCampaignId])
+
+  useEffect(() => {
+    localStorage.setItem(
+      'phx-campaign-performance',
+      JSON.stringify(campaignPerformance),
+    )
+  }, [campaignPerformance])
 
   const opportunities = useMemo(() => {
     const items = []
@@ -452,13 +760,6 @@ export default function Dashboard() {
 
     return items
   }, [activeCampaigns, appointments, goal, revenue])
-
-  const campaignResults = [
-    ['280', 'mensagens'],
-    ['67', 'respostas'],
-    ['21', 'interessados'],
-    ['9', 'agendamentos'],
-  ]
 
   return (
     <div>
@@ -552,22 +853,13 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="glass-card p-5">
-          <h2 className="text-lg font-black">Resultado da campanha</h2>
-          <p className="mt-1 text-sm text-slate-500">Check-up Preventivo</p>
-
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            {campaignResults.map(([value, label]) => (
-              <div
-                key={label}
-                className="rounded-2xl bg-violet-50 p-4 text-center"
-              >
-                <div className="text-2xl font-black text-violet-700">{value}</div>
-                <div className="text-xs text-slate-500">{label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <CampaignResultCard
+          selectedCampaignId={selectedCampaignId}
+          setSelectedCampaignId={setSelectedCampaignId}
+          performance={campaignPerformance}
+          setPerformance={setCampaignPerformance}
+          onOpenCampaigns={() => navigate('/campanhas')}
+        />
       </section>
     </div>
   )
