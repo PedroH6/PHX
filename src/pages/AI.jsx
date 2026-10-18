@@ -1,0 +1,3 @@
+import { Bot,Sparkles } from 'lucide-react'
+import { PageHeading } from '../components/UI'
+export default function AI(){return <div><PageHeading eyebrow="AI Agent" title="Inteligência Artificial" description="Configure o agente que ajuda sua empresa a transformar oportunidades em resultados."/><div className="glass-card p-6"><div className="flex items-center gap-3"><div className="icon-bubble"><Bot/></div><div><div className="font-black">PHX Agent</div><div className="text-sm text-slate-500">Pronto para criar campanhas, sugerir públicos e acompanhar outcomes.</div></div><Sparkles className="ml-auto text-violet-600"/></div></div></div>}
