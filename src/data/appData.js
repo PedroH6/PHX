@@ -6,9 +6,36 @@ export const clients = [
 ]
 
 export const campaigns = [
-  { id: 'campaign-checkup-preventivo', name: 'Check-up Preventivo', audience: '280 contatos', result: '9 agendamentos', status: 'Em andamento', tone: 'emerald', channel: 'WhatsApp' },
-  { id: 'campaign-agenda-cardiologia', name: 'Agenda aberta — Cardiologia', audience: '438 contatos', result: '14 agendamentos', status: 'Concluída', tone: 'violet', channel: 'WhatsApp' },
-  { id: 'campaign-reativacao-6-meses', name: 'Reativação 6 meses', audience: '312 contatos', result: '23 respostas', status: 'Rascunho', tone: 'slate', channel: 'WhatsApp' },
+  {
+    id: 'campaign-checkup-preventivo',
+    name: 'Check-up Preventivo',
+    audience: '280 contatos',
+    result: '9 agendamentos',
+    status: 'Em andamento',
+    tone: 'emerald',
+    channel: 'WhatsApp',
+    metrics: { messages: 280, responses: 67, interested: 21, appointments: 9 },
+  },
+  {
+    id: 'campaign-agenda-cardiologia',
+    name: 'Agenda aberta — Cardiologia',
+    audience: '438 contatos',
+    result: '14 agendamentos',
+    status: 'Concluída',
+    tone: 'violet',
+    channel: 'WhatsApp',
+    metrics: { messages: 438, responses: 104, interested: 38, appointments: 14 },
+  },
+  {
+    id: 'campaign-reativacao-6-meses',
+    name: 'Reativação 6 meses',
+    audience: '312 contatos',
+    result: '23 respostas',
+    status: 'Rascunho',
+    tone: 'slate',
+    channel: 'WhatsApp',
+    metrics: { messages: 0, responses: 0, interested: 0, appointments: 0 },
+  },
 ]
 
 export const conversations = [
