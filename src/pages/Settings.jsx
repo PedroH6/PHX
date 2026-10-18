@@ -1,0 +1,3 @@
+import { Settings as SettingsIcon } from 'lucide-react'
+import { PageHeading } from '../components/UI'
+export default function Settings(){return <div><PageHeading eyebrow="Workspace" title="Configurações" description="Gerencie empresa, notificações e integrações."/><div className="glass-card p-6"><div className="flex items-center gap-3"><div className="icon-bubble"><SettingsIcon/></div><div><div className="font-black">Clínica Vida Plena</div><div className="text-sm text-slate-500">Workspace PHX</div></div></div></div></div>}
