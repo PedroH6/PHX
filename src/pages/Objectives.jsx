@@ -1,9 +1,9 @@
-import { useState } from 'react'
-import { ArrowRight, CheckCircle2, LoaderCircle, Send, Sparkles, Target, TriangleAlert } from 'lucide-react'
-import { useNavigate, useOutletContext } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { CheckCircle2, Save, Target } from 'lucide-react'
+import { useOutletContext } from 'react-router-dom'
 import { Field, PageHeading, StatusPill } from '../components/UI'
 
-const initialForm = {
+const defaultObjective = {
   objective: 'Preencher minha agenda',
   service: 'Cardiologia',
   professional: '',
@@ -12,50 +12,55 @@ const initialForm = {
   context: '',
 }
 
+function loadObjective() {
+  try {
+    const saved = localStorage.getItem('phx-current-objective')
+    return saved ? { ...defaultObjective, ...JSON.parse(saved) } : defaultObjective
+  } catch {
+    return defaultObjective
+  }
+}
+
 export default function Objectives() {
   const { notify } = useOutletContext()
-  const navigate = useNavigate()
-  const [form, setForm] = useState(initialForm)
-  const [strategy, setStrategy] = useState(null)
-  const [meta, setMeta] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [form, setForm] = useState(loadObjective)
+  const [savedAt, setSavedAt] = useState('')
+
+  const progress = useMemo(() => {
+    const available = Math.max(1, Number(form.availableSlots) || 1)
+    const target = Math.max(0, Number(form.target) || 0)
+    return Math.min(100, Math.round((target / available) * 100))
+  }, [form.availableSlots, form.target])
+
+  useEffect(() => {
+    const saved = localStorage.getItem('phx-objective-saved-at')
+    if (saved) setSavedAt(saved)
+  }, [])
 
   const updateField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }))
   }
 
-  const generateStrategy = async (event) => {
+  const saveObjective = (event) => {
     event.preventDefault()
-    setLoading(true)
-    setError('')
-    setStrategy(null)
 
-    try {
-      const response = await fetch('/api/ai/strategy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          availableSlots: Number(form.availableSlots),
-          target: Number(form.target),
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Não foi possível gerar a estratégia.')
-      }
-
-      setStrategy(data.strategy)
-      setMeta(data.meta)
-      notify('Estratégia criada com IA ✨')
-    } catch (requestError) {
-      setError(requestError.message)
-    } finally {
-      setLoading(false)
+    const normalized = {
+      ...form,
+      availableSlots: Math.max(1, Number(form.availableSlots) || 1),
+      target: Math.max(1, Number(form.target) || 1),
     }
+
+    if (normalized.target > normalized.availableSlots) {
+      notify('A meta não pode ser maior que as vagas disponíveis')
+      return
+    }
+
+    const now = new Date().toLocaleString('pt-BR')
+    localStorage.setItem('phx-current-objective', JSON.stringify(normalized))
+    localStorage.setItem('phx-objective-saved-at', now)
+    setForm(normalized)
+    setSavedAt(now)
+    notify('Objetivo salvo com sucesso')
   }
 
   return (
@@ -63,12 +68,12 @@ export default function Objectives() {
       <PageHeading
         eyebrow="Outcome Engine"
         title="Objetivos"
-        description="Diga o resultado que você quer alcançar e deixe a IA do PHX preparar a estratégia."
+        description="Defina o resultado que você quer alcançar e acompanhe sua meta dentro do PHX."
       />
 
       <section className="grid gap-5 xl:grid-cols-[.9fr_1.1fr]">
         <form
-          onSubmit={generateStrategy}
+          onSubmit={saveObjective}
           className="glass-card self-start p-5 sm:p-6"
         >
           <div className="flex items-start gap-3">
@@ -76,9 +81,10 @@ export default function Objectives() {
               <Target size={19} />
             </div>
             <div>
-              <h2 className="font-black text-slate-900">Defina o outcome</h2>
+              <h2 className="font-black text-slate-900">Defina seu outcome</h2>
               <p className="mt-1 text-sm text-slate-500">
-                Esses dados serão enviados para a IA montar uma estratégia.
+                O objetivo fica salvo neste navegador enquanto desenvolvemos o
+                backend definitivo.
               </p>
             </div>
           </div>
@@ -141,223 +147,98 @@ export default function Objectives() {
             </Field>
 
             <div className="sm:col-span-2">
-              <Field label="Contexto adicional (opcional)">
+              <Field label="Observação (opcional)">
                 <textarea
                   rows="4"
                   value={form.context}
                   onChange={(event) =>
                     updateField('context', event.target.value)
                   }
-                  placeholder="Ex.: queremos priorizar pacientes antigos e temos atendimento na parte da tarde."
+                  placeholder="Ex.: priorizar pacientes antigos e horários da tarde."
                 />
               </Field>
             </div>
           </div>
 
-          {error && (
-            <div className="mt-5 flex gap-3 rounded-2xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">
-              <TriangleAlert className="mt-0.5 shrink-0" size={18} />
-              <div>
-                <div className="font-black">Não foi possível gerar</div>
-                <div className="mt-1">{error}</div>
-              </div>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="gradient-button mt-6 w-full disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loading ? (
-              <>
-                <LoaderCircle className="animate-spin" size={18} />
-                Criando estratégia...
-              </>
-            ) : (
-              <>
-                <Sparkles size={18} />
-                Criar estratégia com IA
-              </>
-            )}
+          <button type="submit" className="gradient-button mt-6 w-full">
+            <Save size={18} />
+            Salvar objetivo
           </button>
-
-          <p className="mt-3 text-center text-xs leading-5 text-slate-400">
-            A IA sugere uma estratégia. O resultado final depende da execução,
-            público, canal e contexto do negócio.
-          </p>
         </form>
 
-        <div className="min-w-0">
-          {!strategy ? (
-            <div className="glass-card overflow-hidden p-5">
-              <div className="rounded-[26px] bg-gradient-to-br from-violet-950 via-violet-700 to-fuchsia-500 p-6 text-white">
-                <div className="text-xs font-black uppercase tracking-[.2em] text-violet-200">
-                  PHX AI Strategy
-                </div>
-                <h3 className="mt-3 text-2xl font-black">
-                  Transforme o objetivo em um plano de ação
-                </h3>
-                <p className="mt-3 max-w-lg text-sm leading-6 text-violet-100">
-                  Preencha os dados ao lado e o PHX vai sugerir público,
-                  campanha, mensagem, ações, follow-ups e métricas.
-                </p>
+        <div className="space-y-5">
+          <div className="glass-card overflow-hidden">
+            <div className="bg-gradient-to-br from-violet-950 via-violet-700 to-fuchsia-500 p-6 text-white">
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusPill>Objetivo atual</StatusPill>
+                {savedAt && (
+                  <span className="text-xs font-semibold text-violet-200">
+                    salvo em {savedAt}
+                  </span>
+                )}
+              </div>
 
-                <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                  {[
-                    'Público recomendado',
-                    'Mensagem de campanha',
-                    'Plano de execução',
-                    'Métricas de sucesso',
-                  ].map((item) => (
-                    <div
-                      key={item}
-                      className="rounded-2xl border border-white/15 bg-white/10 p-3 text-sm font-semibold"
-                    >
-                      <CheckCircle2
-                        size={16}
-                        className="mb-2 text-fuchsia-200"
-                      />
-                      {item}
-                    </div>
-                  ))}
+              <h3 className="mt-4 text-2xl font-black">{form.objective}</h3>
+              <p className="mt-2 text-sm text-violet-100">
+                {form.service}
+                {form.professional ? ` • ${form.professional}` : ''}
+              </p>
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+                  <div className="text-xs text-violet-200">Vagas</div>
+                  <div className="mt-1 text-2xl font-black">
+                    {form.availableSlots}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+                  <div className="text-xs text-violet-200">Meta</div>
+                  <div className="mt-1 text-2xl font-black">{form.target}</div>
+                </div>
+
+                <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+                  <div className="text-xs text-violet-200">Cobertura</div>
+                  <div className="mt-1 text-2xl font-black">{progress}%</div>
                 </div>
               </div>
             </div>
-          ) : (
-            <div className="space-y-5">
-              <div className="glass-card overflow-hidden">
-                <div className="bg-gradient-to-br from-violet-950 via-violet-800 to-fuchsia-600 p-6 text-white">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <StatusPill>Estratégia gerada por IA</StatusPill>
-                    {meta?.model && (
-                      <span className="text-xs font-semibold text-violet-200">
-                        {meta.model}
-                      </span>
-                    )}
-                  </div>
 
-                  <h2 className="mt-4 text-2xl font-black">
-                    {strategy.title}
-                  </h2>
-                  <p className="mt-3 max-w-2xl text-sm leading-6 text-violet-100">
-                    {strategy.summary}
-                  </p>
-                </div>
+            <div className="p-5">
+              <div className="text-sm font-black text-slate-800">
+                Resumo do objetivo
+              </div>
 
-                <div className="grid gap-4 p-5 sm:grid-cols-2">
-                  <div className="rounded-2xl bg-violet-50 p-4">
-                    <div className="text-xs font-black uppercase tracking-[.14em] text-violet-500">
-                      Público sugerido
-                    </div>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                      {strategy.audience}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl bg-violet-50 p-4">
-                    <div className="text-xs font-black uppercase tracking-[.14em] text-violet-500">
-                      KPI principal
-                    </div>
-                    <div className="mt-2 font-black text-slate-800">
-                      {strategy.successMetrics.primaryKpi}
+              <div className="mt-4 space-y-3">
+                <div className="flex items-start gap-3 rounded-2xl bg-violet-50 p-4">
+                  <CheckCircle2
+                    size={18}
+                    className="mt-0.5 shrink-0 text-violet-600"
+                  />
+                  <div>
+                    <div className="text-sm font-black text-slate-800">
+                      Resultado desejado
                     </div>
                     <div className="mt-1 text-sm text-slate-500">
-                      {strategy.successMetrics.target}
+                      Alcançar {form.target} de {form.availableSlots} vagas
+                      disponíveis.
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="glass-card p-5">
-                <div className="flex items-center gap-2">
-                  <Send size={18} className="text-violet-600" />
-                  <h3 className="font-black">Campanha sugerida</h3>
-                </div>
-
-                <div className="mt-4 rounded-[22px] border border-violet-100 bg-violet-50/60 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="font-black text-slate-800">
-                      {strategy.campaign.name}
+                {form.context && (
+                  <div className="rounded-2xl border border-violet-100 p-4">
+                    <div className="text-xs font-black uppercase tracking-[.12em] text-violet-500">
+                      Observação
                     </div>
-                    <StatusPill>{strategy.campaign.channel}</StatusPill>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">
+                      {form.context}
+                    </p>
                   </div>
-
-                  <p className="mt-4 whitespace-pre-line text-sm leading-6 text-slate-600">
-                    {strategy.campaign.message}
-                  </p>
-
-                  <div className="mt-4 rounded-xl bg-white px-3 py-2 text-sm font-bold text-violet-700">
-                    CTA: {strategy.campaign.cta}
-                  </div>
-                </div>
+                )}
               </div>
-
-              <div className="glass-card p-5">
-                <h3 className="font-black">Plano de ação</h3>
-
-                <div className="mt-4 space-y-3">
-                  {strategy.actions.map((action) => (
-                    <div
-                      key={`${action.order}-${action.title}`}
-                      className="flex gap-3 rounded-2xl border border-violet-100 p-4"
-                    >
-                      <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-violet-600 text-xs font-black text-white">
-                        {action.order}
-                      </div>
-                      <div>
-                        <div className="font-black text-slate-800">
-                          {action.title}
-                        </div>
-                        <p className="mt-1 text-sm leading-5 text-slate-500">
-                          {action.description}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid gap-5 lg:grid-cols-2">
-                <div className="glass-card p-5">
-                  <h3 className="font-black">Follow-ups</h3>
-                  <div className="mt-4 space-y-2">
-                    {strategy.followUps.map((followUp) => (
-                      <div
-                        key={followUp}
-                        className="rounded-2xl bg-violet-50 p-3 text-sm leading-5 text-slate-600"
-                      >
-                        {followUp}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="glass-card p-5">
-                  <h3 className="font-black">Cuidados da estratégia</h3>
-                  <div className="mt-4 space-y-2">
-                    {strategy.risks.map((risk) => (
-                      <div
-                        key={risk}
-                        className="rounded-2xl bg-amber-50 p-3 text-sm leading-5 text-amber-800"
-                      >
-                        {risk}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => navigate('/campanhas')}
-                className="gradient-button w-full"
-              >
-                Transformar estratégia em campanha
-                <ArrowRight size={18} />
-              </button>
             </div>
-          )}
+          </div>
         </div>
       </section>
     </div>
