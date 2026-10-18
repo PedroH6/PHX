@@ -7,6 +7,7 @@ import {
   Pencil,
   Plus,
   Sparkles,
+  Target,
   X,
 } from 'lucide-react'
 import { PageHeading, StatusPill } from '../components/UI'
@@ -371,8 +372,8 @@ export default function Dashboard() {
             onClick={() => navigate('/objetivos')}
             className="gradient-button"
           >
-            <Sparkles size={18} />
-            Criar estratégia com IA
+            <Target size={18} />
+            Criar objetivo
           </button>
         }
       />
