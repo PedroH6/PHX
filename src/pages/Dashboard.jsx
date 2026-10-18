@@ -14,7 +14,7 @@ import {
   X,
 } from 'lucide-react'
 import { PageHeading, StatusPill } from '../components/UI'
-import { campaigns } from '../data/appData'
+import { loadCampaigns } from '../data/appData'
 
 const DEFAULT_WEEKLY_GOAL = 50
 const DEFAULT_APPOINTMENTS = 36
@@ -327,8 +327,8 @@ function WeeklyGoalCard({ appointments, goal, setGoal }) {
 }
 
 
-function getDefaultCampaignPerformance() {
-  return campaigns.reduce((result, campaign) => {
+function getDefaultCampaignPerformance(campaignList) {
+  return campaignList.reduce((result, campaign) => {
     result[campaign.id] = {
       messages: campaign.metrics?.messages ?? 0,
       responses: campaign.metrics?.responses ?? 0,
@@ -339,15 +339,15 @@ function getDefaultCampaignPerformance() {
   }, {})
 }
 
-function loadCampaignPerformance() {
-  const defaults = getDefaultCampaignPerformance()
+function loadCampaignPerformance(campaignList) {
+  const defaults = getDefaultCampaignPerformance(campaignList)
 
   try {
     const saved = JSON.parse(
       localStorage.getItem('phx-campaign-performance') || '{}',
     )
 
-    return campaigns.reduce((result, campaign) => {
+    return campaignList.reduce((result, campaign) => {
       result[campaign.id] = {
         ...defaults[campaign.id],
         ...(saved[campaign.id] || {}),
@@ -369,6 +369,7 @@ function normalizeCampaignMetrics(metrics) {
 }
 
 function CampaignResultCard({
+  campaignList,
   selectedCampaignId,
   setSelectedCampaignId,
   performance,
@@ -376,8 +377,8 @@ function CampaignResultCard({
   onOpenCampaigns,
 }) {
   const selectedCampaign =
-    campaigns.find((campaign) => campaign.id === selectedCampaignId) ||
-    campaigns[0]
+    campaignList.find((campaign) => campaign.id === selectedCampaignId) ||
+    campaignList[0]
 
   const metrics =
     performance[selectedCampaign?.id] ||
@@ -482,7 +483,7 @@ function CampaignResultCard({
             onChange={(event) => setSelectedCampaignId(event.target.value)}
             className="min-w-0 flex-1 rounded-2xl border border-violet-100 bg-white px-3 py-3 text-sm font-bold text-slate-700 outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-200"
           >
-            {campaigns.map((campaign) => (
+            {campaignList.map((campaign) => (
               <option key={campaign.id} value={campaign.id}>
                 {campaign.name}
               </option>
@@ -664,14 +665,16 @@ export default function Dashboard() {
     { min: 0, max: 99999999 },
   )
 
+  const [campaignList] = useState(loadCampaigns)
+
   const [selectedCampaignId, setSelectedCampaignId] = useState(
     () =>
       localStorage.getItem('phx-dashboard-campaign') ||
-      campaigns[0]?.id ||
+      campaignList[0]?.id ||
       '',
   )
-  const [campaignPerformance, setCampaignPerformance] = useState(
-    loadCampaignPerformance,
+  const [campaignPerformance, setCampaignPerformance] = useState(() =>
+    loadCampaignPerformance(campaignList),
   )
 
   useEffect(() => {
@@ -854,6 +857,7 @@ export default function Dashboard() {
         </div>
 
         <CampaignResultCard
+          campaignList={campaignList}
           selectedCampaignId={selectedCampaignId}
           setSelectedCampaignId={setSelectedCampaignId}
           performance={campaignPerformance}
