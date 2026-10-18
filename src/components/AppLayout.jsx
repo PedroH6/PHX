@@ -17,7 +17,6 @@ import {
   Rocket,
   Search,
   Send,
-  Sparkles,
   UserRound,
   UsersRound,
   X,
@@ -31,7 +30,6 @@ const navItems = [
   { icon: Inbox, label: 'Inbox', to: '/inbox', badge: 3 },
   { icon: UsersRound, label: 'Clientes', to: '/clientes' },
   { icon: CalendarDays, label: 'Agenda', to: '/agenda' },
-  { icon: Sparkles, label: 'IA', to: '/ia' },
   { icon: Cog, label: 'Configurações', to: '/configuracoes' },
 ]
 
@@ -42,7 +40,6 @@ const pageNames = {
   '/inbox': 'Inbox',
   '/clientes': 'Clientes',
   '/agenda': 'Agenda',
-  '/ia': 'Inteligência Artificial',
   '/configuracoes': 'Configurações',
 }
 
@@ -50,7 +47,7 @@ const initialNotifications = [
   {
     id: 1,
     title: '14 horários vazios amanhã',
-    description: 'A IA encontrou uma oportunidade de campanha para preencher a agenda.',
+    description: 'Há uma oportunidade de campanha para preencher a agenda.',
     time: 'Agora',
     route: '/campanhas',
     unread: true,
@@ -262,7 +259,7 @@ export default function AppLayout() {
               Plano Pro
             </div>
             <p className="mt-2 text-sm leading-5 text-violet-100">
-              Mais automações, IA e resultados para seu negócio.
+              Mais automações e resultados para seu negócio.
             </p>
           </div>
         </div>
