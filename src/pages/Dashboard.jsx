@@ -3,11 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import {
   CalendarDays,
   Check,
+  CircleCheckBig,
+  Lightbulb,
+  Megaphone,
   Minus,
   Pencil,
   Plus,
-  Sparkles,
   Target,
+  TrendingUp,
   X,
 } from 'lucide-react'
 import { PageHeading, StatusPill } from '../components/UI'
@@ -172,12 +175,7 @@ function EditableMetricCard({
   )
 }
 
-function WeeklyGoalCard({ appointments }) {
-  const [goal, setGoal] = usePersistentNumber(
-    'phx-weekly-goal',
-    DEFAULT_WEEKLY_GOAL,
-    { min: 1, max: 999 },
-  )
+function WeeklyGoalCard({ appointments, goal, setGoal }) {
   const [draftGoal, setDraftGoal] = useState(goal)
   const [editing, setEditing] = useState(false)
 
@@ -327,8 +325,39 @@ function WeeklyGoalCard({ appointments }) {
   )
 }
 
+function OpportunityCard({ opportunity, onOpen }) {
+  const Icon = opportunity.icon
+
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(opportunity.route)}
+      className="group flex w-full items-center gap-4 rounded-2xl border border-violet-100 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-violet-200 hover:bg-violet-50/60 hover:shadow-lg hover:shadow-violet-100/50"
+    >
+      <div className="icon-bubble shrink-0 transition group-hover:scale-105">
+        <Icon size={18} />
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="font-black text-slate-800">{opportunity.title}</div>
+        <div className="mt-1 text-xs leading-5 text-slate-500">
+          {opportunity.description}
+        </div>
+      </div>
+
+      <StatusPill tone={opportunity.tone}>{opportunity.action}</StatusPill>
+    </button>
+  )
+}
+
 export default function Dashboard() {
   const navigate = useNavigate()
+
+  const [goal, setGoal] = usePersistentNumber(
+    'phx-weekly-goal',
+    DEFAULT_WEEKLY_GOAL,
+    { min: 1, max: 999 },
+  )
 
   const [appointments, setAppointments] = usePersistentNumber(
     'phx-week-appointments',
@@ -348,11 +377,81 @@ export default function Dashboard() {
     { min: 0, max: 99999999 },
   )
 
-  const opportunities = [
-    ['14 horários vazios amanhã', 'Agenda', '/campanhas'],
-    ['312 pacientes sem retornar há 6 meses', 'Clientes', '/clientes'],
-    ['Nova agenda aberta de Cardiologia', 'Campanha', '/campanhas'],
-  ]
+  const opportunities = useMemo(() => {
+    const items = []
+    const missingAppointments = Math.max(0, goal - appointments)
+
+    if (missingAppointments > 0) {
+      items.push({
+        id: 'weekly-goal',
+        icon: Target,
+        title: `Faltam ${missingAppointments} agendamentos para a meta`,
+        description: `Você tem ${appointments} de ${goal} agendamentos planejados para esta semana.`,
+        action: 'Planejar',
+        tone: 'amber',
+        route: '/objetivos',
+      })
+    } else {
+      items.push({
+        id: 'weekly-goal-complete',
+        icon: CircleCheckBig,
+        title: 'Meta semanal atingida',
+        description: `Você já alcançou ${appointments} agendamentos para uma meta de ${goal}.`,
+        action: 'Concluída',
+        tone: 'emerald',
+        route: '/objetivos',
+      })
+    }
+
+    if (activeCampaigns === 0) {
+      items.push({
+        id: 'campaigns',
+        icon: Megaphone,
+        title: 'Nenhuma campanha ativa',
+        description: 'Crie uma campanha para começar a movimentar sua base de clientes.',
+        action: 'Criar',
+        tone: 'violet',
+        route: '/campanhas',
+      })
+    } else {
+      items.push({
+        id: 'campaigns',
+        icon: Megaphone,
+        title: `${activeCampaigns} ${activeCampaigns === 1 ? 'campanha ativa' : 'campanhas ativas'}`,
+        description: 'Acompanhe as campanhas em andamento e veja quais estão gerando mais respostas.',
+        action: 'Acompanhar',
+        tone: 'violet',
+        route: '/campanhas',
+      })
+    }
+
+    const nextRevenueMilestone =
+      Math.max(5000, Math.ceil((revenue + 1) / 5000) * 5000)
+    const revenueGap = Math.max(0, nextRevenueMilestone - revenue)
+    const currency = new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      maximumFractionDigits: 0,
+    })
+
+    items.push({
+      id: 'revenue',
+      icon: TrendingUp,
+      title:
+        revenue === 0
+          ? 'Registre a primeira receita do mês'
+          : `Faltam ${currency.format(revenueGap)} para o próximo marco`,
+      description:
+        revenue === 0
+          ? 'Comece a acompanhar o faturamento gerado pelas ações do PHX.'
+          : `Próximo marco de receita: ${currency.format(nextRevenueMilestone)}.`,
+      action: 'Acompanhar',
+      tone: revenue === 0 ? 'amber' : 'emerald',
+      route: '/campanhas',
+    })
+
+    return items
+  }, [activeCampaigns, appointments, goal, revenue])
 
   const campaignResults = [
     ['280', 'mensagens'],
@@ -379,7 +478,11 @@ export default function Dashboard() {
       />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <WeeklyGoalCard appointments={appointments} />
+        <WeeklyGoalCard
+          appointments={appointments}
+          goal={goal}
+          setGoal={setGoal}
+        />
 
         <EditableMetricCard
           label="Agendamentos"
@@ -424,31 +527,27 @@ export default function Dashboard() {
 
       <section className="mt-5 grid gap-5 xl:grid-cols-[1.15fr_.85fr]">
         <div className="glass-card p-5">
-          <div className="flex items-center gap-2">
-            <Sparkles className="text-violet-600" />
-            <h2 className="text-lg font-black">
-              Oportunidades detectadas pela IA
-            </h2>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <Lightbulb className="text-violet-600" />
+                <h2 className="text-lg font-black">Oportunidades do negócio</h2>
+              </div>
+              <p className="mt-1 text-sm text-slate-500">
+                Sugestões automáticas baseadas nos números do seu Dashboard.
+              </p>
+            </div>
+
+            <StatusPill>{opportunities.length} oportunidades</StatusPill>
           </div>
 
           <div className="mt-4 space-y-3">
-            {opportunities.map(([title, subtitle, route]) => (
-              <button
-                key={title}
-                onClick={() => navigate(route)}
-                className="flex w-full items-center gap-4 rounded-2xl border border-violet-100 bg-white p-4 text-left transition hover:bg-violet-50"
-              >
-                <div className="icon-bubble">
-                  <CalendarDays size={18} />
-                </div>
-
-                <div className="flex-1">
-                  <div className="font-black">{title}</div>
-                  <div className="text-xs text-slate-500">{subtitle}</div>
-                </div>
-
-                <StatusPill>Abrir</StatusPill>
-              </button>
+            {opportunities.map((opportunity) => (
+              <OpportunityCard
+                key={opportunity.id}
+                opportunity={opportunity}
+                onOpen={navigate}
+              />
             ))}
           </div>
         </div>
