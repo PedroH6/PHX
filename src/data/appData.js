@@ -88,13 +88,22 @@ function normalizeCampaign(campaign) {
 export function loadCampaigns() {
   try {
     const saved = localStorage.getItem('phx-campaigns')
+    const savedPerformance = JSON.parse(
+      localStorage.getItem('phx-campaign-performance') || '{}',
+    )
 
-    if (!saved) return campaigns.map(normalizeCampaign)
+    const source = saved ? JSON.parse(saved) : campaigns
+    if (!Array.isArray(source)) return campaigns.map(normalizeCampaign)
 
-    const parsed = JSON.parse(saved)
-    if (!Array.isArray(parsed)) return campaigns.map(normalizeCampaign)
-
-    return parsed.map(normalizeCampaign)
+    return source.map((campaign) =>
+      normalizeCampaign({
+        ...campaign,
+        metrics: {
+          ...campaign.metrics,
+          ...(savedPerformance[campaign.id] || {}),
+        },
+      }),
+    )
   } catch {
     return campaigns.map(normalizeCampaign)
   }
